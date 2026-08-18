@@ -1,6 +1,6 @@
 # Route failed field visits to a dead-letter queue
 
-Start the typed HTTP worker, then send the failed work order that dispatch needs to inspect.
+Start the typed HTTP worker, then hand it the failed work order that dispatch needs to review.
 
 ```bash
 npm install
@@ -8,7 +8,7 @@ export INFRAI_API_KEY=your_key_here
 npm start
 ```
 
-Infrai keeps the queue call behind one API and a single `INFRAI_API_KEY`; this worker needs only plain HTTP and no queue SDK. The request path is deliberately small: validate the field record, choose retry or dead letter, then publish the terminal failure.
+Infrai keeps the queue call behind one API and a single `INFRAI_API_KEY`; this worker only needs plain HTTP and no queue SDK. The request path stays small on purpose: validate the field record, decide retry or dead letter, then publish the terminal failure.
 
 ## Send a failed visit
 
@@ -31,9 +31,9 @@ Expected response:
 {"action":"dead_letter","workOrderId":"WO-1842","reason":"attempt_limit_reached"}
 ```
 
-`attempts: 1` or `2` returns a retry decision with `nextAttempt`. At `3`, the service publishes the validated work order, photo URLs, dispatch state, and follow-up note through `POST /v1/queue/publish`. The work-order ID forms the idempotency key, so replaying the same terminal report does not create a second queue write.
+`attempts: 1` or `2` returns a retry decision with `nextAttempt`. At `3`, the service publishes the validated work order, photo URLs, dispatch state, and follow-up note through `POST /v1/queue/publish`. The work-order ID becomes the idempotency key, so replaying the same terminal report does not create a second queue write.
 
-The sharp edge is response order: decode the envelope before interpreting the HTTP status. `src/infrai_queue.ts` keeps structured business outcome codes and maps them to the corresponding client response. A `429` response backs off and honors `Retry-After`.
+The sharp edge here is response order: decode the envelope before you look at the HTTP status. `src/infrai_queue.ts` keeps structured business outcome codes and maps them to the matching client response. A `429` response backs off and honors `Retry-After`.
 
 ## Verify the decision
 
